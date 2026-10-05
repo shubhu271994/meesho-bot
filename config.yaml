@@ -1,0 +1,56 @@
+# ---- What the bot does each run ----
+features:
+  accept_pending: true       # accept all orders in the Pending tab
+  download_labels: true      # download shipping labels for Ready-to-Ship orders
+  download_manifest: false   # also download manifest (off — not part of the current flow)
+
+# ---- Pages ----
+urls:
+  login: https://supplier.meesho.com/panel/v3/new/root/login
+  home: https://supplier.meesho.com/panel/v3/new/root/login   # better: paste your dashboard URL here so a valid session skips the login form
+  orders: ""   # optional: paste the exact Orders page URL from your browser to skip menu navigation
+
+# ---- Visible text the bot looks for (edit if the panel wording differs) ----
+text:
+  orders_nav: ["Orders"]                       # sidebar
+  manage_orders_nav: ["Manage Orders"]         # submenu under Orders
+  pending_card: ["Pending Orders"]             # fallback: Home → To do list card
+  pending_tab: "Pending"                       # tab shows "Pending (xx)"
+  rts_tab: "Ready to Ship"                     # tab shows "Ready to Ship (xx)"
+  table_header_anchor: "Product Details"       # the grey ☐ just left of this header text = select all
+  accept_button: ["Accept Selected Orders", "Accept All", "Accept All Orders", "Accept Orders"]   # never the per-row "Accept"
+  confirm_button: ["Accept Order", "Accept Orders", "Accept", "Confirm", "Yes", "Yes, Accept", "Okay", "OK"]   # clicked ONLY inside a pop-up (e.g. "Accepting orders")
+  past_label_text: ["past label", "previous label", "pending label", "labels generated", "download label"]
+  label_button: ["Label", "Labels", "Download Label", "Download Labels"]
+  manifest_button: ["Manifest", "Download Manifest"]
+
+# ---- Known Meesho pop-ups: text on the pop-up → button to press ("X" = the ✕ in its corner) ----
+# Checked first, before any guessing. Add new ones here as you see them.
+known_popups:
+  - {text: "Orders accepted successfully", click: "Got it"}
+  - {text: "Auto-retrying label generation", click: "Got it"}
+  - {text: "NEW DISPATCH TAG", click: "Got it"}
+  - {text: "Opt-in Now", click: "X"}
+  - {text: "Participate Now", click: "X"}
+
+# ---- CSS selectors ----
+selectors:
+  login_id: "input[name=emailOrPhone]"
+  password: "input[name=password], input[type=password]"
+  login_submit: "button[type=submit]:has-text('Log in')"   # never the 'Get OTP to log in' button
+  select_all: "thead input[type=checkbox], [role=columnheader] input[type=checkbox], input[type=checkbox][aria-label*='select all' i]"
+  popup: "[aria-label='Close modal'], [role=dialog], [role=alertdialog], .MuiDialog-root, .MuiModal-root, [class*='modal' i][class*='container' i]"
+
+# ---- Behaviour ----
+timeout_ms: 30000
+idle_wait_ms: 6000     # max wait for the page to go quiet after each step
+max_batches: 20        # accept loop limit per run (handles pagination)
+accept_wait_secs: 300  # max wait for accepted orders to show up in Ready to Ship
+leftover_ok: 9         # single-digit Pending left over (cancellations / new orders) is fine — next run takes them
+label_wait_secs: 120   # how long to wait for the label PDF
+max_pages: 30          # Ready-to-Ship pages to label per run
+final_accept_before_secs: 150   # timed run: last accept pass this long before label time
+reselect_before_secs: 30        # timed run: re-open Ready to Ship + select all this long before label time
+retries: 1             # retry once with a fresh login on failure
+download_dir: downloads
+keep_run_days: 14      # logs/screenshots retention
