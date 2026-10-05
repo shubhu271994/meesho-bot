@@ -1,0 +1,63 @@
+name: Meesho order bot
+
+on:
+  schedule:
+    - cron: "30 * * * *"    # every hour at :00 IST
+    - cron: "45 17 * * *"   # 11:15 PM IST -> clicks Label at exactly 12:00:00 AM
+    - cron: "0 3 * * 1"     # weekly keep-alive
+  workflow_dispatch:
+    inputs:
+      args:
+        description: "Extra options, e.g. --dry-run   or   --account sanjay --dry-run"
+        required: false
+        default: "--dry-run"
+
+concurrency:
+  group: meesho-bot
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      TZ: Asia/Kolkata
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Keep schedule alive
+        if: github.event.schedule == '0 3 * * 1'
+        uses: liskin/gh-workflow-keepalive@v1
+
+      - uses: actions/setup-python@v5
+        if: github.event.schedule != '0 3 * * 1'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install bot + browser
+        if: github.event.schedule != '0 3 * * 1'
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Write logins from secret
+        if: github.event.schedule != '0 3 * * 1'
+        run: printf '%s\n' "$BOT_ENV" > .env
+        env:
+          BOT_ENV: ${{ secrets.BOT_ENV }}
+
+      - name: Run bot
+        if: github.event.schedule != '0 3 * * 1'
+        run: |
+          if [ "${{ github.event.schedule }}" = "45 17 * * *" ]; then
+            python bot.py --label-at 00:00
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python bot.py ${{ inputs.args }}
+          else
+            python bot.py
+          fi
